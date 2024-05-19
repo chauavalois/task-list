@@ -1,7 +1,6 @@
 import { AppService } from 'src/app/app.service';
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Task } from '../../models/task.model';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-list',
@@ -10,17 +9,13 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 })
 export class ListComponent implements OnInit {
 
-  public taskForm: FormGroup;
-  public taskList: Task[] = [];
-  public taskEdicao: Task | null = null;
+  constructor(private appService: AppService) { }
+  closeModal: ElementRef
+  @ViewChild('closeModal') 
 
-  constructor(private appService: AppService, private fb: FormBuilder) {
-    this.taskForm = this.fb.group({
-      title: ['', Validators.required],
-      description: ['', Validators.required],
-      hour: ['', Validators.required]
-    });
-  }
+  public taskList: Task[] = [];
+  public taskNovo: Task = new Task();
+  public taskEdicao: Task = new Task();
 
   ngOnInit() {
     this.getAllTask();
@@ -32,29 +27,25 @@ export class ListComponent implements OnInit {
     );
   }
 
-  saveTask() {
-    if (this.taskForm.valid) {
-      const task: Task = { ...this.taskForm.value };
-
-      if (this.taskEdicao) { // Se estiver editando
-        task.id = this.taskEdicao.id;
+  saveTask(task: Task) {
+    if (task.title && task.description && task.hour) {
+      if (task.id) { //editar tarefa
         this.appService.update(task).subscribe({
           next: () => {
             alert('Edições salvas com sucesso');
             this.getAllTask();
-            this.closeModal();
-            this.taskEdicao = null;
+            this.closeModal.nativeElement.click();
           },
           error: () => {
             alert('Erro ao tentar editar');
           }
         });
-      } else { // Se for uma nova tarefa
+      } else { //nova tarefa
         this.appService.save(task).subscribe({
           next: () => {
             alert('Salvo com sucesso');
             this.getAllTask();
-            this.taskForm.reset();
+            this.taskNovo = new Task();
           },
           error: () => {
             alert('Erro ao tentar salvar');
@@ -62,14 +53,17 @@ export class ListComponent implements OnInit {
         });
       }
     } else {
-      alert("Preencha todos os campos para salvar uma nova tarefa");
+      alert("Prencha todos os campos para salvar uma nova tarefa")
     }
   }
 
   CapturaTaskEditar(task: Task) {
-    this.taskEdicao = { ...task };
-    this.taskForm.patchValue(this.taskEdicao);
+    this.taskEdicao.id = task.id;
+    this.taskEdicao.title = task.title;
+    this.taskEdicao.description = task.description;
+    this.taskEdicao.hour = task.hour;
   }
+
 
   deleteTask(taskId: number) {
     if (confirm('Tem certeza que deseja excluir a tarefa?')) {
@@ -82,13 +76,6 @@ export class ListComponent implements OnInit {
           alert('Erro ao tentar excluir');
         }
       });
-    }
-  }
-
-  closeModal() {
-    const closeModalButton = document.getElementById('closeModal');
-    if (closeModalButton) {
-      closeModalButton.click();
     }
   }
 }
